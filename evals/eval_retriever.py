@@ -1,4 +1,11 @@
 # eval_retriever.py
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from dotenv import load_dotenv
 
 from deepeval import evaluate
@@ -7,11 +14,12 @@ from deepeval.metrics import ContextualRecallMetric, ContextualPrecisionMetric
 
 from src.reranker import RerankingRetriever
 from evals.harness import load_goldens, summarize_by_metric, print_summary
+from evals.judge import GroqJudge
 
 load_dotenv()
 
 GOLDEN_PATH = "goldens/retriever_goldens.json"
-JUDGE_MODEL = "gpt-4o-mini"   # NOTE: differs from the other evals (gpt-4o-mini)
+JUDGE_MODEL = GroqJudge(model_name="openai/gpt-oss-120b", temperature=0)
 THRESHOLD = 0.7
 
 
@@ -48,11 +56,11 @@ def run(retriever):
         metrics=metrics,
         hyperparameters={
             "retriever": "reranker",          # vs "reranked" when you swap it in
-            "embedding_model": "text-embedding-3-large",
+            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
             "chunk_size": 1000,
             "chunk_overlap": 150,
             "top_k": 3,
-            "judge_model": JUDGE_MODEL,
+            "judge_model": "openai/gpt-oss-120b",
             "golden_set": GOLDEN_PATH,
         },
     )
