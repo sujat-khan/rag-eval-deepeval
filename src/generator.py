@@ -17,6 +17,8 @@ Both share the exact same prompt, model, and chain — the only difference is
 that one waits for the whole answer and the other emits it token-by-token.
 """
 
+import time
+import re
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
@@ -89,10 +91,28 @@ Answer:
 chain = prompt | llm | StrOutputParser()
 
 
+def _invoke_with_retry(chain_to_invoke, payload, max_retries=8):
+    for attempt in range(max_retries):
+        try:
+            return chain_to_invoke.invoke(payload)
+        except Exception as e:
+            if "rate_limit" in str(e).lower() or "429" in str(e):
+                if attempt == max_retries - 1:
+                    raise
+                match = re.search(r"try again in ([\d\.]+)s", str(e))
+                wait_time = (float(match.group(1)) + 1.0) if match else (3.0 + attempt * 2.0)
+                print(f"[Generator] Rate limit (429) hit. Pausing {wait_time:.1f}s before retry {attempt + 1}/{max_retries}...")
+                time.sleep(wait_time)
+            else:
+                raise
+
+
 def generate(query: str, context: list[str]) -> str:
     """Generate a grounded answer from the query and context chunks."""
     context_text = "\n\n".join(context)
-    return chain.invoke({"question": query, "context": context_text})
+    result = _invoke_with_retry(chain, {"question": query, "context": context_text})
+    time.sleep(2.0)  # pace calls to protect the 8,000 TPM limit
+    return result
 
 
 def generate_stream(query: str, context: list[str]):
@@ -108,9 +128,23 @@ def generate_stream(query: str, context: list[str]):
              caller can clock time-to-first-token on the first *visible* token.
     """
     context_text = "\n\n".join(context)
-    for chunk in chain.stream({"question": query, "context": context_text}):
-        if chunk:                      # skip empty leading chunks
-            yield chunk
+    for attempt in range(8):
+        try:
+            for chunk in chain.stream({"question": query, "context": context_text}):
+                if chunk:                      # skip empty leading chunks
+                    yield chunk
+            time.sleep(2.0)
+            return
+        except Exception as e:
+            if "rate_limit" in str(e).lower() or "429" in str(e):
+                if attempt == 7:
+                    raise
+                match = re.search(r"try again in ([\d\.]+)s", str(e))
+                wait_time = (float(match.group(1)) + 1.0) if match else (3.0 + attempt * 2.0)
+                print(f"[Generator] Rate limit (429) hit. Pausing {wait_time:.1f}s before retry {attempt + 1}/8...")
+                time.sleep(wait_time)
+            else:
+                raise
 
 
 # quick manual test: python src/generator.py
