@@ -17,14 +17,14 @@ Both share the exact same prompt, model, and chain — the only difference is
 that one waits for the whole answer and the other emits it token-by-token.
 """
 
-from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
+from langchain_groq import ChatGroq
 
 load_dotenv()
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0)
 
 # faithfulness-first prompt: ground every claim in the context, abstain if unsure
 prompt = ChatPromptTemplate.from_template(

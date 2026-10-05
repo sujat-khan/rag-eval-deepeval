@@ -13,19 +13,28 @@ is purely the generator's fault --- the context was already correct.
     python -m evals.eval_generator
 """
 
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from dotenv import load_dotenv
 
 from deepeval import evaluate
+from deepeval.evaluate.configs import CacheConfig
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import FaithfulnessMetric, AnswerRelevancyMetric
 
 from src.generator import generate   # your generator: generate(query, context) -> answer
 from evals.harness import load_goldens, summarize_by_metric, print_summary
+from evals.judge import GroqJudge
 
 load_dotenv()
 
 GOLDEN_PATH = "goldens/faithfulness_dataset.json"
-JUDGE_MODEL = "gpt-4o-mini"
+JUDGE_MODEL = GroqJudge(model_name="openai/gpt-oss-120b", temperature=0)
 THRESHOLD = 0.7
 
 
@@ -63,7 +72,11 @@ def run():
     ]
 
     # 4. EVALUATE --- runs the metrics on every case, prints a report
-    result = evaluate(test_cases=test_cases, metrics=metrics)
+    result = evaluate(
+        test_cases=test_cases,
+        metrics=metrics,
+        cache_config=CacheConfig(write_cache=False, use_cache=False),
+    )
     return summarize_by_metric(result)
 
 

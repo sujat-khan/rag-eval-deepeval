@@ -9,6 +9,7 @@ if str(ROOT) not in sys.path:
 from dotenv import load_dotenv
 
 from deepeval import evaluate
+from deepeval.evaluate.configs import CacheConfig
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import ContextualRecallMetric, ContextualPrecisionMetric
 
@@ -54,6 +55,7 @@ def run(retriever):
     result = evaluate(
         test_cases=test_cases,
         metrics=metrics,
+        cache_config=CacheConfig(write_cache=False, use_cache=False),
         hyperparameters={
             "retriever": "reranker",          # vs "reranked" when you swap it in
             "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
