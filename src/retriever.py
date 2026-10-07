@@ -45,8 +45,8 @@ def load_store():
     docs = load_transcripts()
 
     chunks = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150,
+        chunk_size=700,
+        chunk_overlap=140,
     ).split_documents(docs)
 
     return Chroma.from_documents(chunks, embeddings, persist_directory=DB_DIR)

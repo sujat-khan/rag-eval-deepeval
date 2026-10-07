@@ -16,7 +16,14 @@ still being flaky on the first attempt.
 # ============================================================
 # 1. IMPORTS & ENV
 # ============================================================
+import sys
 import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from dotenv import load_dotenv
 
 from src.rag_pipeline import RagPipeline

@@ -1,5 +1,12 @@
 # online/triad_worker.py
+import sys
 import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from dotenv import load_dotenv
 from langsmith import Client
 
@@ -10,10 +17,12 @@ from deepeval.metrics import (
     ContextualRelevancyMetric,
 )
 
+from evals.judge import GroqJudge
+
 load_dotenv()
 
 PROJECT = "cx doubt solver"
-JUDGE_MODEL = "gpt-4o-mini"
+JUDGE_MODEL = GroqJudge(model_name="openai/gpt-oss-120b", temperature=0)
 THRESHOLD = 0.7
 SAMPLE_RATE = 1          # ~30% of traffic — 3 metrics × several calls each = expensive
 POLL_SECONDS = 60

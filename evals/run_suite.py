@@ -23,10 +23,19 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import time
 from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from dotenv import load_dotenv
+
+load_dotenv()
+os.environ.setdefault("DEEPEVAL_DISABLE_TIMEOUTS", "true")
 
 from src.rag_pipeline import RagPipeline
 from src.reranker import RerankingRetriever
@@ -40,8 +49,6 @@ from evals import (
     eval_ops,
 )
 from evals.metric_registry import rule_for
-
-load_dotenv()
 
 
 # ============================================================

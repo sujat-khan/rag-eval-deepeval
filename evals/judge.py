@@ -1,7 +1,13 @@
 # evals/judge.py
 import asyncio
+import os
 import re
 import time
+
+# Disable DeepEval task timeouts since GroqJudge deliberately paces requests
+# sequentially with delay cooldowns to respect Groq rate limits.
+os.environ.setdefault("DEEPEVAL_DISABLE_TIMEOUTS", "true")
+
 from deepeval.models import DeepEvalBaseLLM
 from langchain_groq import ChatGroq
 
@@ -23,11 +29,18 @@ class GroqJudge(DeepEvalBaseLLM):
         self.max_concurrent = max_concurrent
         self.delay = delay
         self._semaphore = None
+        self._semaphore_loop = None
         super().__init__(model_name=model_name)
 
     def _get_semaphore(self):
-        if self._semaphore is None:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if self._semaphore is None or (current_loop is not None and self._semaphore_loop is not current_loop):
             self._semaphore = asyncio.Semaphore(self.max_concurrent)
+            self._semaphore_loop = current_loop
         return self._semaphore
 
     def load_model(self):
