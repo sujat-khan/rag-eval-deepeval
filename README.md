@@ -422,6 +422,11 @@ cache_config = CacheConfig(write_cache=False, use_cache=False)
 ```
 This guarantees clean, crash-free execution on both Windows and Linux environments.
 
+### DeepEval Watchdog Timeout Fix (`DEEPEVAL_DISABLE_TIMEOUTS`)
+DeepEval enforces a default per-task deadline of 180 seconds (`DEEPEVAL_PER_TASK_TIMEOUT_SECONDS = 180`). When evaluating test case batches asynchronously, all cases launch simultaneously and start their 180s countdown. Because `GroqJudge` serializes calls (`Semaphore(1)`) and inserts cooldowns (`delay=2.0s`) to respect Groq's free-tier rate limits (30 RPM), evaluating larger suites (15+ test cases) can take several minutes.
+
+To prevent DeepEval's watchdog from raising a `TimeoutError` and aborting test cases that are waiting in queue for the judge semaphore, `DEEPEVAL_DISABLE_TIMEOUTS=true` is set in `.env` and defaulted in `evals/judge.py` and `evals/run_suite.py`.
+
 ---
 
 ## 📂 The Golden Datasets (`goldens/`)
@@ -472,7 +477,17 @@ pip install -r requirements.txt
 Create a `.env` file in the root directory:
 
 ```env
+# Required: Groq API Key for the generator and GroqJudge
 GROQ_API_KEY=gsk_your_groq_api_key_here
+
+# Required for paced Groq evaluations: Prevents DeepEval 180s watchdog timeout
+DEEPEVAL_DISABLE_TIMEOUTS=true
+
+# Optional: LangSmith tracing & online triad monitoring (evals/eval_online.py)
+LANGSMITH_TRACING=true
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+LANGSMITH_API_KEY=lsv2_pt_your_key_here
+LANGSMITH_PROJECT="cx doubt solver"
 ```
 
 *(Note: If you prefer using OpenAI models as judges instead of Groq, you can also add `OPENAI_API_KEY=sk-...`)*.
@@ -534,9 +549,16 @@ python evals\eval_reliability.py
 python evals\eval_ops.py
 ```
 
-### 5. Automated CI/CD Regression Suite
+### 5. Online Production Monitoring
+```powershell
+# Continuous reference-free RAG Triad evaluation over live LangSmith traces using GroqJudge
+python evals\eval_online.py
+```
+
+### 6. Automated CI/CD Regression Suite
 ```powershell
 # Step 1: Run the full suite and save as your baseline
+# (Both 'python evals\run_suite.py' and 'python -m evals.run_suite' are supported)
 python -m evals.run_suite --baseline --label "Initial baseline v1.0"
 
 # Step 2: (Make any code change to prompts, chunk size, or models...)
@@ -551,7 +573,7 @@ python -m evals.compare
 python -m evals.compare --all
 ```
 
-### 6. Interactive Chatbot UI
+### 7. Interactive Chatbot UI
 ```powershell
 streamlit run src/app.py
 ```
